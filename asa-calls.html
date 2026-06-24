@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Asa Calls</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg:         #F5F4F0;
+      --surface:    #FFFFFF;
+      --surface2:   #EFEDE8;
+      --border:     #E2DED6;
+      --border-soft:#EAE7E1;
+      --navy:       #0D1F3C;
+      --navy-mid:   #1A3358;
+      --navy-light: rgba(13,31,60,0.07);
+      --gold:       #B8952A;
+      --gold-mid:   #C9A840;
+      --gold-light: rgba(184,149,42,0.12);
+      --text:       #0D1F3C;
+      --muted:      #7A7569;
+      --muted-light:#A09990;
+      --green:      #276749;
+      --green-bg:   rgba(39,103,73,0.1);
+      --red:        #B83030;
+      --red-bg:     rgba(184,48,48,0.1);
+      --blue:       #1A5FAD;
+      --blue-bg:    rgba(26,95,173,0.1);
+      --shadow-sm:  0 1px 3px rgba(13,31,60,0.07), 0 1px 2px rgba(13,31,60,0.04);
+      --shadow-md:  0 4px 12px rgba(13,31,60,0.1), 0 2px 4px rgba(13,31,60,0.06);
+      --radius:     14px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      overscroll-behavior: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--navy);
+      padding: 16px 18px 14px;
+      flex-shrink: 0;
+    }
+    .header-row { display: flex; justify-content: space-between; align-items: center; }
+    .header-logo { display: flex; align-items: center; gap: 8px; }
+    .header-logo svg { width: 20px; height: 20px; color: var(--gold); }
+    .header h1 { font-size: 17px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.2px; }
+    .header-sub { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 3px; font-weight: 400; letter-spacing: 0.1px; }
+
+    /* ── SCROLL AREA ── */
+    .scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px 14px calc(72px + var(--safe-bottom));
+    }
+    .scroll-area.fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ── BOTTOM NAV ── */
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: var(--safe-bottom);
+      z-index: 50;
+      box-shadow: 0 -2px 12px rgba(13,31,60,0.06);
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 10px 4px 11px;
+      background: none;
+      border: none;
+      color: var(--muted-light);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      transition: color 0.15s;
+      position: relative;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-btn.active { color: var(--navy); }
+    .nav-btn.active svg { color: var(--gold); }
+    .nav-btn svg { width: 21px; height: 21px; transition: color 0.15s; }
+    .nav-badge {
+      position: absolute; top: 7px; right: calc(50% - 20px);
+      background: var(--gold); color: #fff;
+      font-size: 9px; font-weight: 700;
+      border-radius: 10px; padding: 1px 5px;
+      min-width: 16px; text-align: center;
+    }
+
+    /* ── SECTION HEADER ── */
+    .sec-hdr {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; margin-top: 6px;
+    }
+    .sec-hdr h2 {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .sec-hdr .count {
+      font-size: 11px; color: var(--muted-light); font-weight: 500;
+    }
+
+    /* ── CONTACT CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+      cursor: pointer;
+      animation: cardIn 0.2s ease both;
+    }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .card:active { transform: scale(0.99); box-shadow: none; }
+    .card.warm { border-left: 3px solid var(--gold); }
+
+    .card-body { flex: 1; min-width: 0; }
+    .card-name {
+      font-size: 14px; font-weight: 600; color: var(--navy);
+      margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-phone { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .card-meta { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+    .card-note { font-size: 11px; color: var(--muted-light); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── QUICK CALL BUTTON ── */
+    .quick-call {
+      flex-shrink: 0;
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--gold-light);
+      border: 1.5px solid var(--gold);
+      color: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .quick-call:active { background: var(--gold); color: #fff; transform: scale(0.92); }
+    .quick-call svg { width: 18px; height: 18px; }
+
+    /* ── BADGES ── */
+    .badge {
+      font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 20px;
+      letter-spacing: 0.1px;
+    }
+    .b-green  { background: var(--green-bg);  color: var(--green); }
+    .b-gold   { background: var(--gold-light); color: var(--gold); }
+    .b-red    { background: var(--red-bg);    color: var(--red); }
+    .b-blue   { background: var(--blue-bg);   color: var(--blue); }
+    .b-gray   { background: var(--navy-light); color: var(--muted); }
+    .b-warm   { background: var(--gold-light); color: var(--gold); }
+
+    .lic-date  { font-size: 10px; color: var(--muted-light); font-weight: 500; }
+    .att-count { font-size: 10px; color: var(--muted-light); font-weight: 500; }
+
+    /* ── SWEEP BUTTON (small) ── */
+    .sweep-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 6px 11px;
+      font-size: 11px; font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 14px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.15s, color 0.15s;
+      letter-spacing: 0.1px;
+    }
+    .sweep-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .sweep-btn svg { width: 13px; height: 13px; }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--border-soft); margin: 14px 0; }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center; padding: 56px 24px; color: var(--muted);
+    }
+    .empty-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: var(--navy-light);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .empty-icon svg { width: 26px; height: 26px; color: var(--navy); opacity: 0.4; }
+    .empty h3 { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+    .empty p { font-size: 13px; line-height: 1.6; }
+
+    /* ── CALLING VIEW ── */
+    .call-screen { display: flex; flex-direction: column; height: 100%; background: var(--bg); }
+
+    .call-header {
+      background: var(--navy);
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      background: rgba(255,255,255,0.12); border: none;
+      color: #fff; cursor: pointer;
+      width: 34px; height: 34px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.15s;
+    }
+    .back-btn:active { background: rgba(255,255,255,0.22); }
+    .back-btn svg { width: 18px; height: 18px; }
+    .call-header-info { flex: 1; min-width: 0; }
+    .call-header-info h2 { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .call-header-info p { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+    .call-body {
+      flex: 1; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 18px 40px;
+    }
+
+    /* Dial card */
+    .dial-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      text-align: center;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .dial-phone-num { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 4px; letter-spacing: 0.5px; }
+    .dial-lic { font-size: 11px; color: var(--muted-light); margin-bottom: 20px; }
+    .dial-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 68px; height: 68px; border-radius: 50%;
+      background: var(--navy); color: #fff;
+      text-decoration: none; border: none; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(13,31,60,0.25);
+      transition: transform 0.1s, box-shadow 0.1s;
+      margin-bottom: 8px;
+    }
+    .dial-btn:active { transform: scale(0.93); box-shadow: 0 2px 6px rgba(13,31,60,0.2); }
+    .dial-btn svg { width: 30px; height: 30px; }
+    .dial-att { font-size: 11px; color: var(--muted-light); margin-top: 6px; font-weight: 500; }
+
+    /* Detail cards */
+    .detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .detail-card-title {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    /* Outcome grid */
+    .outcome-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+    .outcome-btn {
+      padding: 12px 4px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 11px; font-weight: 600;
+      cursor: pointer; text-align: center;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.4;
+    }
+    .outcome-btn .emoji { font-size: 16px; display: block; margin-bottom: 3px; }
+    .out-answered  { border-color: var(--green);  background: var(--green-bg);  color: var(--green); }
+    .out-voicemail { border-color: var(--gold);   background: var(--gold-light); color: var(--gold); }
+    .out-no_answer { border-color: var(--red);    background: var(--red-bg);    color: var(--red); }
+
+    /* Toggle row */
+    .toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .toggle-row:first-child { padding-top: 0; }
+    .toggle-label { font-size: 13px; font-weight: 500; color: var(--navy); display: flex; align-items: center; gap: 7px; }
+    .toggle-label .tl-icon { font-size: 16px; }
+    .toggle-pill {
+      width: 44px; height: 26px; border-radius: 13px;
+      border: none; cursor: pointer; position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-pill::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px;
+      border-radius: 50%; background: #fff;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-pill.off { background: var(--border); }
+    .toggle-pill.on  { background: var(--gold); }
+    .toggle-pill.on::after { transform: translateX(18px); }
+
+    /* Fields */
+    .field { margin-bottom: 11px; }
+    .field label {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      display: block; margin-bottom: 5px;
+    }
+    .field input, .field textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--navy);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus, .field textarea:focus { border-color: var(--navy-mid); }
+    .field textarea { resize: none; min-height: 72px; line-height: 1.55; }
+    .field-prefix-wrap { position: relative; }
+    .field-prefix {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 14px; font-weight: 600; color: var(--muted);
+    }
+    .field-prefix-wrap input { padding-left: 22px; }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%; padding: 14px;
+      border-radius: 12px; border: none;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.1px;
+    }
+    .btn:active { opacity: 0.85; transform: scale(0.99); }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-gold    { background: var(--gold); color: #fff; }
+    .btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--border); }
+    .skip-btn {
+      background: none; border: none;
+      color: var(--muted-light); font-size: 13px; font-weight: 500;
+      cursor: pointer; padding: 11px; width: 100%; text-align: center;
+      font-family: 'Inter', sans-serif; transition: color 0.15s;
+    }
+    .reset-btn {
+      background: none; border: none;
+      color: var(--red); font-size: 12px; font-weight: 500;
+      cursor: pointer; padding: 8px; width: 100%; text-align: center;
+      font-family: 'Inter', sans-serif; opacity: 0.75;
+    }
+
+    /* ── IMPORT VIEW ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 14px;
+      background: var(--surface);
+    }
+    .drop-zone.over { border-color: var(--gold); background: var(--gold-light); }
+    .drop-zone svg { width: 38px; height: 38px; color: var(--muted-light); margin-bottom: 10px; }
+    .drop-zone p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .drop-zone strong { color: var(--navy); }
+
+    .map-box {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 16px; margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .map-box h3 { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 12px; }
+    .map-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .map-row label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    select {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 8px 10px;
+      color: var(--navy); font-size: 12px;
+      width: 100%; font-family: 'Inter', sans-serif; outline: none;
+    }
+
+    .batch-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 7px; cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.15s;
+    }
+    .batch-card:active { border-color: var(--navy); }
+    .batch-card.active-batch { border-color: var(--gold); border-width: 1.5px; }
+    .batch-name { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 2px; }
+    .batch-meta { font-size: 11px; color: var(--muted-light); }
+
+    /* ── DASHBOARD ── */
+    .stats-bar {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 14px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px; padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; line-height: 1; }
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.green { color: var(--green); }
+    .stat-sub { font-size: 11px; color: var(--muted-light); margin-top: 3px; }
+
+    .search-wrap {
+      position: relative; margin-bottom: 10px;
+    }
+    .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted-light); pointer-events: none; }
+    .search-input {
+      width: 100%; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 10px 12px 10px 34px;
+      color: var(--navy); font-size: 14px;
+      font-family: 'Inter', sans-serif; outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: var(--navy-mid); }
+    .search-input::placeholder { color: var(--muted-light); }
+
+    .filter-chips {
+      display: flex; gap: 6px; overflow-x: auto;
+      padding-bottom: 2px; margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .filter-chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0; padding: 6px 13px;
+      border-radius: 20px; border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--muted);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .chip.active.gold-chip { background: var(--gold); border-color: var(--gold); }
+
+    .batch-group { margin-bottom: 6px; }
+    .batch-group-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border-soft);
+      border-radius: 10px; cursor: pointer;
+      margin-bottom: 2px;
+      transition: background 0.15s;
+    }
+    .batch-group-header:active { background: var(--surface2); }
+    .batch-group-header.open { border-radius: 10px 10px 0 0; border-bottom-color: transparent; margin-bottom: 0; }
+    .batch-group-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .batch-group-meta { font-size: 11px; color: var(--muted-light); margin-top: 1px; }
+    .batch-chevron { color: var(--muted-light); transition: transform 0.2s; flex-shrink: 0; }
+    .batch-chevron svg { width: 16px; height: 16px; }
+    .batch-chevron.open { transform: rotate(180deg); }
+    .batch-group-body {
+      border: 1px solid var(--border-soft); border-top: none;
+      border-radius: 0 0 10px 10px; overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .batch-group-body .card {
+      border-radius: 0; border-left: none; border-right: none; border-top: none;
+      box-shadow: none; margin-bottom: 0;
+      border-bottom: 1px solid var(--border-soft);
+      animation: none;
+    }
+    .batch-group-body .card:last-child { border-bottom: none; }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; gap: 14px;
+      color: var(--muted); font-size: 13px;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: calc(70px + var(--safe-bottom) + 10px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--navy); color: #fff;
+      border-radius: 10px; padding: 10px 18px;
+      font-size: 13px; font-weight: 500;
+      z-index: 200; white-space: nowrap;
+      pointer-events: none;
+      box-shadow: var(--shadow-md);
+      animation: toastUp 0.22s ease forwards;
+    }
+    @keyframes toastUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="loading"><div class="spinner"></div><p>Loading…</p></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const SUPA_URL = 'https://lgfcdohfauytdshuzyae.supabase.co';
+const SUPA_KEY = 'sb_publishable_dH6y3RnBy-U6buzeEpWLPg_4P9aVSr-';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const S = {
+  view: 'list',
+  contacts: [], followups: [], batches: [], contactsByBatch: [],
+  activeBatchId: null, activeBatchName: '',
+  currentContact: null, fromFollowup: false,
+  selectedOutcome: null, importPreview: null, loading: true,
+  // Dashboard
+  dashContacts: [], dashFilter: 'all', dashSearch: '', dashLoading: false,
+};
+
+// ─────────────────────────────────────────────
+// ICONS
+// ─────────────────────────────────────────────
+const I = {
+  phone:  `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>`,
+  list:   `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`,
+  flag:   `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5"/></svg>`,
+  upload: `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>`,
+  back:   `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>`,
+  bolt:   `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>`,
+  chart:  `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>`,
+  search: `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z"/></svg>`,
+  chevron:`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>`,
+};
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function statusBadge(status) {
+  const map = {
+    answered:    ['Answered',   'b-green'],
+    voicemail:   ['Voicemail',  'b-gold'],
+    no_answer:   ['No Answer',  'b-red'],
+    in_progress: ['Called',     'b-blue'],
+  };
+  const [label, cls] = map[status] || [];
+  return label ? `<span class="badge ${cls}">${label}</span>` : '';
+}
+
+function toast(msg, dur = 2200) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), dur);
+}
+
+function contactCard(c, fromFollowup = false) {
+  const lic  = c.license_issue_date ? `<span class="lic-date">${fmtDate(c.license_issue_date)}</span>` : '';
+  const att  = c.attempts > 0 ? `<span class="att-count">· ${c.attempts}×</span>` : '';
+  const warm = c.is_warm_lead ? `<span class="badge b-warm">⭐ Warm</span>` : '';
+  const note = c.notes ? `<div class="card-note">${c.notes}</div>` : '';
+  const quote = c.quote_amount ? `<span class="badge b-blue">$${Number(c.quote_amount).toLocaleString()}</span>` : '';
+  const phone = (c.phone_number || '').replace(/\D/g,'');
+  const warmClass = c.is_warm_lead ? 'warm' : '';
+  const cityLine = c.city ? `<span style="color:var(--muted-light)"> · ${c.city}</span>` : '';
+
+  return `
+    <div class="card ${warmClass}" onclick="openContact('${c.id}', ${fromFollowup})">
+      <div class="card-body">
+        <div class="card-name">${c.business_name}</div>
+        <div class="card-phone">${c.phone_number || '—'}${cityLine}</div>
+        <div class="card-meta">
+          ${statusBadge(c.status)}${warm}${quote}${lic}${att}
+        </div>
+        ${note}
+      </div>
+      <a href="tel:${phone}" class="quick-call" onclick="quickCall(event,'${c.id}')" title="Call now">
+        ${I.phone}
+      </a>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (S.loading) {
+    app.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading…</p></div>`;
+    return;
+  }
+
+  if (S.view === 'calling') {
+    app.innerHTML = renderCalling();
+    return;
+  }
+
+  const navBadge = S.followups.length > 0
+    ? `<span class="nav-badge">${S.followups.length}</span>` : '';
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-row">
+        <div class="header-logo">
+          ${I.phone}
+          <h1>Asa Calls</h1>
+        </div>
+      </div>
+      <div class="header-sub">${S.activeBatchName || 'No batch loaded — go to Import'}</div>
+    </div>
+    <div class="scroll-area fade-in">${renderView()}</div>
+    <nav class="nav">
+      <button class="nav-btn ${S.view==='list'?'active':''}" onclick="nav('list')">${I.list}<span>Calls</span></button>
+      <button class="nav-btn ${S.view==='followup'?'active':''}" onclick="nav('followup')">${navBadge}${I.flag}<span>Follow-ups</span></button>
+      <button class="nav-btn ${S.view==='dashboard'?'active':''}" onclick="nav('dashboard')">${I.chart}<span>History</span></button>
+      <button class="nav-btn ${S.view==='import'?'active':''}" onclick="nav('import')">${I.upload}<span>Import</span></button>
+    </nav>`;
+
+  attachDragDrop();
+}
+
+function renderView() {
+  switch (S.view) {
+    case 'list':      return renderList();
+    case 'followup':  return renderFollowup();
+    case 'dashboard': return renderDashboard();
+    case 'import':    return renderImport();
+    default: return '';
+  }
+}
+
+// ── LIST ──
+function renderList() {
+  if (!S.batches.length) {
+    return `<div class="empty">
+      <div class="empty-icon">${I.upload}</div>
+      <h3>No contacts yet</h3>
+      <p>Import an Excel file to get started.</p>
+    </div>`;
+  }
+
+  const totalUncalled = S.contacts.filter(c => ['uncalled','in_progress'].includes(c.status)).length;
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">${totalUncalled} remaining across ${S.contactsByBatch.length} batch${S.contactsByBatch.length!==1?'es':''}</span>
+      <button class="sweep-btn" style="margin-bottom:0" onclick="runSweep()">${I.bolt} End-of-day sweep</button>
+    </div>`;
+
+  if (!S.contactsByBatch.length) {
+    html += `<div class="empty"><div class="empty-icon">${I.list}</div><h3>All done!</h3><p>Every contact has been processed.</p></div>`;
+    return html;
+  }
+
+  S.contactsByBatch.forEach((group, gi) => {
+    const warm       = group.contacts.filter(c => c.is_warm_lead && !['answered'].includes(c.status));
+    const uncalled   = group.contacts.filter(c => !c.is_warm_lead && c.status === 'uncalled');
+    const inProgress = group.contacts.filter(c => !c.is_warm_lead && c.status === 'in_progress');
+    const done       = group.contacts.filter(c => !['uncalled','in_progress'].includes(c.status) && !c.is_warm_lead);
+
+    const remaining = uncalled.length + inProgress.length;
+    const total     = group.contacts.length;
+
+    html += `
+      <div style="margin-bottom:${gi < S.contactsByBatch.length-1 ? '18px' : '0'}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;padding:0 2px">
+          <span style="font-size:11px;font-weight:700;color:var(--navy);letter-spacing:0.2px">${group.batchName}</span>
+          <span style="font-size:10px;color:var(--muted-light)">${remaining} of ${total} remaining</span>
+        </div>`;
+
+    if (warm.length > 0) {
+      html += `<div class="sec-hdr"><h2>⭐ Warm</h2><span>${warm.length}</span></div>`;
+      warm.forEach(c => { html += contactCard(c); });
+    }
+    if (uncalled.length > 0) {
+      html += `<div class="sec-hdr"><h2>To Call</h2><span>${uncalled.length}</span></div>`;
+      uncalled.forEach(c => { html += contactCard(c); });
+    }
+    if (inProgress.length > 0) {
+      html += `<div class="sec-hdr"><h2>No Outcome</h2><span>${inProgress.length}</span></div>`;
+      inProgress.forEach(c => { html += contactCard(c); });
+    }
+    if (done.length > 0) {
+      html += `<div class="sec-hdr" style="margin-top:4px"><h2>Done</h2><span>${done.length}</span></div>`;
+      done.forEach(c => { html += contactCard(c); });
+    }
+
+    html += `</div>`;
+    if (gi < S.contactsByBatch.length - 1) html += `<div class="divider"></div>`;
+  });
+
+  return html;
+}
+
+// ── FOLLOW-UPS ──
+function renderFollowup() {
+  if (S.followups.length === 0) {
+    return `<div class="empty">
+      <div class="empty-icon">${I.flag}</div>
+      <h3>No follow-ups</h3>
+      <p>Voicemails and no-answers will appear here.</p>
+    </div>`;
+  }
+  let html = `<div class="sec-hdr"><h2>Follow-up Queue</h2><span>${S.followups.length}</span></div>`;
+  S.followups.forEach(c => { html += contactCard(c, true); });
+  return html;
+}
+
+// ── IMPORT ──
+function renderImport() {
+  let html = `
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      ${I.upload}
+      <p><strong>Tap to upload Excel file</strong><br>.xlsx, .xls, or .csv</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(event)">`;
+
+  if (S.importPreview) {
+    const cols = S.importPreview.columns;
+    const opts = (guess) => ['— Skip —', ...cols].map(c =>
+      `<option value="${c}" ${c===guess?'selected':''}>${c}</option>`).join('');
+    html += `
+      <div class="map-box">
+        <h3>Map columns <span style="color:var(--muted-light);font-weight:400">${S.importPreview.count} rows detected</span></h3>
+        <div class="map-row"><label>Business Name *</label><select id="col-name">${opts(S.importPreview.g.name)}</select></div>
+        <div class="map-row"><label>Phone Number</label><select id="col-phone">${opts(S.importPreview.g.phone)}</select></div>
+        <div class="map-row"><label>License Date</label><select id="col-date">${opts(S.importPreview.g.date)}</select></div>
+        <div class="map-row"><label>City</label><select id="col-city">${opts(S.importPreview.g.city)}</select></div>
+        <div style="height:10px"></div>
+        <button class="btn btn-primary" onclick="doImport()">Import ${S.importPreview.count} contacts</button>
+      </div>`;
+  }
+
+  if (S.batches.length > 0) {
+    html += `<div class="sec-hdr" style="margin-top:8px"><h2>Previous Batches</h2></div>`;
+    S.batches.forEach(b => {
+      const a = b.id === S.activeBatchId ? 'active-batch' : '';
+      html += `
+        <div class="batch-card ${a}" style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1" onclick="switchBatch('${b.id}','${b.name.replace(/'/g,"\\'")}')">
+            <div class="batch-name">${b.name}</div>
+            <div class="batch-meta">${b.total_contacts} contacts · ${new Date(b.uploaded_at).toLocaleDateString()}</div>
+          </div>
+          <button onclick="deleteBatch('${b.id}','${b.name.replace(/'/g,"\\'")}',event)"
+            style="background:none;border:none;color:var(--red);opacity:0.6;cursor:pointer;padding:6px;font-size:18px;line-height:1;flex-shrink:0"
+            title="Delete batch">✕</button>
+        </div>`;
+    });
+  }
+  return html;
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  if (S.dashLoading) {
+    return `<div class="loading" style="padding:40px 0"><div class="spinner"></div><p>Loading history…</p></div>`;
+  }
+
+  const all = S.dashContacts;
+
+  // Stats
+  const totalCalled  = all.length;
+  const answered     = all.filter(c => c.status === 'answered').length;
+  const answerRate   = totalCalled > 0 ? Math.round((answered / totalCalled) * 100) : 0;
+  const warmLeads    = all.filter(c => c.is_warm_lead).length;
+  const pipeline     = all.reduce((sum, c) => sum + (Number(c.quote_amount) || 0), 0);
+  const pipelineFmt  = pipeline >= 1000
+    ? '$' + (pipeline / 1000).toFixed(pipeline % 1000 === 0 ? 0 : 1) + 'k'
+    : pipeline > 0 ? '$' + pipeline.toLocaleString() : '—';
+
+  // Filter
+  const q = S.dashSearch.toLowerCase();
+  let filtered = all.filter(c => {
+    const matchSearch = !q || c.business_name.toLowerCase().includes(q) || (c.phone_number||'').includes(q) || (c.contact_name||'').toLowerCase().includes(q);
+    const matchFilter =
+      S.dashFilter === 'all'       ? true :
+      S.dashFilter === 'answered'  ? c.status === 'answered' :
+      S.dashFilter === 'warm'      ? c.is_warm_lead :
+      S.dashFilter === 'voicemail' ? c.status === 'voicemail' :
+      S.dashFilter === 'no_answer' ? c.status === 'no_answer' : true;
+    return matchSearch && matchFilter;
+  });
+
+  // Group by batch
+  const batchMap = {};
+  filtered.forEach(c => {
+    const key = c.batch_id || 'unknown';
+    if (!batchMap[key]) batchMap[key] = { contacts: [], name: '' };
+    batchMap[key].contacts.push(c);
+  });
+
+  // Attach batch names
+  S.batches.forEach(b => {
+    if (batchMap[b.id]) batchMap[b.id].name = b.name;
+  });
+
+  const chips = [
+    { key: 'all',       label: `All (${all.length})`,         cls: '' },
+    { key: 'answered',  label: `✅ Answered (${answered})`,    cls: '' },
+    { key: 'warm',      label: `⭐ Warm (${warmLeads})`,       cls: 'gold-chip' },
+    { key: 'voicemail', label: `📬 Voicemail`,                 cls: '' },
+    { key: 'no_answer', label: `❌ No Answer`,                 cls: '' },
+  ];
+
+  let html = `
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Called</div>
+        <div class="stat-value">${totalCalled}</div>
+        <div class="stat-sub">across all batches</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Answer Rate</div>
+        <div class="stat-value green">${answerRate}%</div>
+        <div class="stat-sub">${answered} answered</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Warm Leads</div>
+        <div class="stat-value gold">${warmLeads}</div>
+        <div class="stat-sub">flagged contacts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pipeline</div>
+        <div class="stat-value gold">${pipelineFmt}</div>
+        <div class="stat-sub">total quoted</div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      ${I.search}
+      <input class="search-input" type="text" placeholder="Search by name, phone, or contact…"
+        value="${S.dashSearch}"
+        oninput="dashSearch(this.value)">
+    </div>
+
+    <div class="filter-chips">
+      ${chips.map(c => `<button class="chip ${S.dashFilter===c.key?'active':''} ${c.cls}" onclick="dashFilter('${c.key}')">${c.label}</button>`).join('')}
+    </div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">${I.search}</div><h3>No results</h3><p>Try a different search or filter.</p></div>`;
+    return html;
+  }
+
+  const batchIds = Object.keys(batchMap);
+  batchIds.forEach(bid => {
+    const group = batchMap[bid];
+    const label = group.name || 'Unknown Batch';
+    const isOpen = S.dashOpenBatches?.[bid] !== false; // open by default
+    html += `
+      <div class="batch-group">
+        <div class="batch-group-header ${isOpen?'open':''}" onclick="toggleBatchGroup('${bid}')">
+          <div>
+            <div class="batch-group-title">${label}</div>
+            <div class="batch-group-meta">${group.contacts.length} contact${group.contacts.length!==1?'s':''}</div>
+          </div>
+          <span class="batch-chevron ${isOpen?'open':''}">${I.chevron}</span>
+        </div>
+        ${isOpen ? `<div class="batch-group-body">${group.contacts.map(c => contactCard(c, c.is_follow_up)).join('')}</div>` : ''}
+      </div>`;
+  });
+
+  return html;
+}
+
+function toggleBatchGroup(bid) {
+  if (!S.dashOpenBatches) S.dashOpenBatches = {};
+  S.dashOpenBatches[bid] = S.dashOpenBatches[bid] === false ? true : false;
+  // Re-render dashboard section only
+  const scroll = document.querySelector('.scroll-area');
+  if (scroll) scroll.innerHTML = renderDashboard();
+}
+
+function dashFilter(key) {
+  S.dashFilter = key;
+  const scroll = document.querySelector('.scroll-area');
+  if (scroll) scroll.innerHTML = renderDashboard();
+  // Restore search input focus state
+}
+
+let dashSearchTimer;
+function dashSearch(val) {
+  S.dashSearch = val;
+  clearTimeout(dashSearchTimer);
+  dashSearchTimer = setTimeout(() => {
+    const scroll = document.querySelector('.scroll-area');
+    if (scroll) {
+      const prev = scroll.querySelector('.search-input')?.value || val;
+      scroll.innerHTML = renderDashboard();
+      // Keep cursor in search box
+      const inp = scroll.querySelector('.search-input');
+      if (inp) { inp.value = prev; inp.focus(); inp.setSelectionRange(prev.length, prev.length); }
+    }
+  }, 150);
+}
+
+async function loadDashboard() {
+  S.dashLoading = true;
+  const scroll = document.querySelector('.scroll-area');
+  if (scroll) scroll.innerHTML = renderDashboard();
+
+  try {
+    // Load all contacted contacts across all batches
+    const { data } = await db.from('contacts').select('*')
+      .neq('status', 'uncalled')
+      .order('last_called_at', { ascending: false });
+    S.dashContacts = data || [];
+  } catch(e) { console.error(e); toast('Error loading history'); }
+
+  S.dashLoading = false;
+  const scroll2 = document.querySelector('.scroll-area');
+  if (scroll2) scroll2.innerHTML = renderDashboard();
+}
+
+// ── CALLING VIEW ──
+function renderCalling() {
+  const c = S.currentContact;
+  if (!c) return '';
+  const phone = (c.phone_number||'').replace(/\D/g,'');
+  const warmOn  = c.is_warm_lead ? 'on' : 'off';
+
+  const outcomes = [
+    { key:'answered',  emoji:'✅', label:'Answered' },
+    { key:'voicemail', emoji:'📬', label:'Voicemail' },
+    { key:'no_answer', emoji:'❌', label:'No Answer' },
+  ];
+  const outcomeGrid = outcomes.map(o => {
+    const sel = S.selectedOutcome === o.key ? `out-${o.key}` : '';
+    return `<button class="outcome-btn ${sel}" onclick="selectOutcome('${o.key}')">
+      <span class="emoji">${o.emoji}</span>${o.label}
+    </button>`;
+  }).join('');
+
+  const nameField = S.selectedOutcome === 'answered' ? `
+    <div class="field">
+      <label>Who answered?</label>
+      <input type="text" id="inp-name" placeholder="Contact name…" value="${c.contact_name||''}">
+    </div>` : '';
+
+  return `
+    <div class="call-screen">
+      <div class="call-header">
+        <button class="back-btn" onclick="backFromCall()">${I.back}</button>
+        <div class="call-header-info">
+          <h2>${c.business_name}</h2>
+          <p>${c.phone_number || 'No number on file'}</p>
+        </div>
+      </div>
+      <div class="call-body">
+
+        <div class="dial-card">
+          <div class="dial-phone-num">${c.phone_number || '—'}</div>
+          <div class="dial-lic">${c.license_issue_date ? 'Licensed ' + fmtDate(c.license_issue_date) : ''}</div>
+          <a href="tel:${phone}" class="dial-btn" onclick="logAttempt('${c.id}')">${I.phone}</a>
+          <div class="dial-att">${c.attempts > 0 ? c.attempts + ' attempt' + (c.attempts!==1?'s':'') + ' logged' : 'Tap to dial'}</div>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-card-title">Outcome <span style="color:var(--muted-light);text-transform:none;font-size:10px;letter-spacing:0">(optional)</span></div>
+          <div class="outcome-grid">${outcomeGrid}</div>
+          ${nameField ? `<div style="height:12px"></div>${nameField}` : ''}
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-card-title">Details</div>
+          <div class="toggle-row">
+            <div class="toggle-label"><span class="tl-icon">⭐</span> Warm Lead</div>
+            <button class="toggle-pill ${warmOn}" id="warm-toggle" onclick="toggleWarm()"></button>
+          </div>
+          <div class="toggle-row" style="padding-top:12px">
+            <div style="flex:1">
+              <div class="field" style="margin-bottom:0">
+                <label>Quote Amount</label>
+                <div class="field-prefix-wrap">
+                  <span class="field-prefix">$</span>
+                  <input type="number" id="inp-quote" placeholder="0.00" value="${c.quote_amount||''}" inputmode="decimal">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="toggle-row" style="padding-top:12px">
+            <div style="flex:1">
+              <div class="field" style="margin-bottom:0">
+                <label>Notes</label>
+                <textarea id="inp-notes" placeholder="Add notes…">${c.notes||''}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveAndNext()">Save &amp; Next →</button>
+        <button class="skip-btn" onclick="skipContact()">Skip</button>
+        <button class="reset-btn" onclick="resetContact()">↩ Reset to uncalled</button>
+        <button class="reset-btn" style="opacity:0.5" onclick="deleteContact()">🗑 Delete contact</button>
+
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function nav(view) {
+  S.view = view; S.importPreview = null;
+  render();
+  if (view === 'dashboard') loadDashboard();
+}
+
+function openContact(id, fromFollowup = false) {
+  S.currentContact = [...S.contacts, ...S.followups].find(c => c.id === id) || null;
+  S.fromFollowup = fromFollowup;
+  S.selectedOutcome = null;
+  S.view = 'calling';
+  render();
+}
+
+function backFromCall() {
+  S.view = S.fromFollowup ? 'followup' : 'list';
+  S.currentContact = null;
+  render();
+}
+
+function selectOutcome(key) {
+  // Stash drafts before re-render
+  const c = S.currentContact;
+  c._draftNotes = document.getElementById('inp-notes')?.value ?? c._draftNotes;
+  c._draftName  = document.getElementById('inp-name')?.value  ?? c._draftName;
+  c._draftQuote = document.getElementById('inp-quote')?.value ?? c._draftQuote;
+  S.selectedOutcome = S.selectedOutcome === key ? null : key;
+  render();
+  if (c._draftNotes) { const el = document.getElementById('inp-notes'); if (el) el.value = c._draftNotes; }
+  if (c._draftName)  { const el = document.getElementById('inp-name');  if (el) el.value = c._draftName;  }
+  if (c._draftQuote) { const el = document.getElementById('inp-quote'); if (el) el.value = c._draftQuote; }
+}
+
+function toggleWarm() {
+  const c = S.currentContact;
+  if (!c) return;
+  c.is_warm_lead = !c.is_warm_lead;
+  // Save immediately
+  db.from('contacts').update({ is_warm_lead: c.is_warm_lead }).eq('id', c.id).then(() => {});
+  updateLocal(c);
+  const btn = document.getElementById('warm-toggle');
+  if (btn) { btn.className = `toggle-pill ${c.is_warm_lead ? 'on' : 'off'}`; }
+  toast(c.is_warm_lead ? '⭐ Marked as warm lead' : 'Removed warm lead');
+}
+
+// ─────────────────────────────────────────────
+// QUICK CALL (from card button)
+// ─────────────────────────────────────────────
+async function quickCall(event, id) {
+  event.stopPropagation();
+  const c = [...S.contacts, ...S.followups].find(x => x.id === id);
+  if (!c) return;
+  try {
+    await db.from('call_logs').insert({ contact_id: id, called_at: new Date().toISOString() });
+    const newAtt = (c.attempts || 0) + 1;
+    const newStatus = c.status === 'uncalled' ? 'in_progress' : c.status;
+    await db.from('contacts').update({ attempts: newAtt, last_called_at: new Date().toISOString(), status: newStatus }).eq('id', id);
+    const updated = { ...c, attempts: newAtt, status: newStatus };
+    updateLocal(updated);
+    render();
+    toast(`Calling ${c.business_name}…`);
+  } catch(e) { console.error(e); }
+}
+
+// ─────────────────────────────────────────────
+// CALL LOGGING
+// ─────────────────────────────────────────────
+async function logAttempt(contactId) {
+  const c = S.currentContact;
+  if (!c) return;
+  try {
+    await db.from('call_logs').insert({ contact_id: contactId, called_at: new Date().toISOString() });
+    const newAtt = (c.attempts || 0) + 1;
+    const newStatus = c.status === 'uncalled' ? 'in_progress' : c.status;
+    await db.from('contacts').update({ attempts: newAtt, last_called_at: new Date().toISOString(), status: newStatus }).eq('id', contactId);
+    S.currentContact = { ...c, attempts: newAtt, status: newStatus };
+    updateLocal(S.currentContact);
+    // Update attempt counter in UI without full re-render
+    const attEl = document.querySelector('.dial-att');
+    if (attEl) attEl.textContent = `${newAtt} attempt${newAtt!==1?'s':''} logged`;
+  } catch(e) { console.error(e); }
+}
+
+async function saveAndNext() {
+  const c = S.currentContact;
+  if (!c) return;
+  const outcome     = S.selectedOutcome;
+  const notes       = document.getElementById('inp-notes')?.value.trim() || '';
+  const contactName = document.getElementById('inp-name')?.value.trim()  || '';
+  const quoteRaw    = document.getElementById('inp-quote')?.value.trim() || '';
+  const quoteAmount = quoteRaw ? parseFloat(quoteRaw) : null;
+  const goFollowup  = outcome === 'voicemail' || outcome === 'no_answer';
+
+  try {
+    if (outcome) {
+      const { data: logs } = await db.from('call_logs').select('id').eq('contact_id', c.id)
+        .order('called_at', { ascending: false }).limit(1);
+      if (logs?.length) {
+        await db.from('call_logs').update({ outcome, contact_name: contactName, notes }).eq('id', logs[0].id);
+      }
+    }
+
+    const updates = {
+      status: outcome || c.status,
+      notes: notes || null,
+      contact_name: contactName || null,
+      quote_amount: quoteAmount,
+      is_warm_lead: c.is_warm_lead,
+      is_follow_up: goFollowup,
+    };
+    await db.from('contacts').update(updates).eq('id', c.id);
+
+    const updated = { ...c, ...updates };
+    updateLocal(updated);
+    if (goFollowup && !S.followups.find(f => f.id === c.id)) S.followups.push(updated);
+
+    toast(outcome ? `Logged: ${outcome.replace('_',' ')}` : 'Saved');
+
+    const queue = (S.fromFollowup ? S.followups : S.contacts)
+      .filter(x => x.id !== c.id && ['uncalled','in_progress'].includes(x.status));
+
+    if (queue.length > 0) {
+      S.currentContact = queue[0];
+      S.selectedOutcome = null;
+      render();
+    } else {
+      S.view = S.fromFollowup ? 'followup' : 'list';
+      S.currentContact = null;
+      await loadData();
+    }
+  } catch(e) { console.error(e); toast('Error saving — try again'); }
+}
+
+async function skipContact() {
+  const c = S.currentContact;
+  const queue = (S.fromFollowup ? S.followups : S.contacts)
+    .filter(x => x.id !== c.id && ['uncalled','in_progress'].includes(x.status));
+  if (queue.length > 0) { S.currentContact = queue[0]; S.selectedOutcome = null; render(); }
+  else backFromCall();
+}
+
+async function resetContact() {
+  const c = S.currentContact;
+  if (!c) return;
+  try {
+    await db.from('call_logs').delete().eq('contact_id', c.id);
+    await db.from('contacts').update({
+      status: 'uncalled', attempts: 0, last_called_at: null,
+      is_follow_up: false, contact_name: null, notes: null, quote_amount: null,
+    }).eq('id', c.id);
+    const reset = { ...c, status: 'uncalled', attempts: 0, last_called_at: null,
+      is_follow_up: false, contact_name: null, notes: null, quote_amount: null };
+    updateLocal(reset);
+    if (S.followups.find(x => x.id === c.id)) {
+      S.followups = S.followups.filter(x => x.id !== c.id);
+      if (!S.contacts.find(x => x.id === c.id)) S.contacts.unshift(reset);
+    }
+    toast('Reset to uncalled');
+    S.view = S.fromFollowup ? 'followup' : 'list';
+    S.currentContact = null;
+    render();
+  } catch(e) { console.error(e); toast('Reset failed'); }
+}
+
+async function deleteContact() {
+  const c = S.currentContact;
+  if (!c) return;
+  if (!confirm(`Delete "${c.business_name}"? This cannot be undone.`)) return;
+  try {
+    await db.from('contacts').delete().eq('id', c.id);
+    S.contacts  = S.contacts.filter(x => x.id !== c.id);
+    S.followups = S.followups.filter(x => x.id !== c.id);
+    S.contactsByBatch.forEach(g => { g.contacts = g.contacts.filter(x => x.id !== c.id); });
+    S.contactsByBatch = S.contactsByBatch.filter(g => g.contacts.length > 0);
+    toast(`Deleted "${c.business_name}"`);
+    S.view = S.fromFollowup ? 'followup' : 'list';
+    S.currentContact = null;
+    render();
+  } catch(e) { console.error(e); toast('Delete failed'); }
+}
+
+function updateLocal(updated) {
+  const ci = S.contacts.findIndex(x => x.id === updated.id);
+  if (ci >= 0) S.contacts[ci] = updated;
+  const fi = S.followups.findIndex(x => x.id === updated.id);
+  if (fi >= 0) S.followups[fi] = updated;
+}
+
+// ─────────────────────────────────────────────
+// END-OF-DAY SWEEP
+// ─────────────────────────────────────────────
+async function runSweep() {
+  try {
+    const { data: targets } = await db.from('contacts').select('id')
+      .eq('status', 'in_progress');
+    if (!targets?.length) { toast('Nothing to sweep'); return; }
+    const ids = targets.map(t => t.id);
+    await db.from('contacts').update({ status: 'voicemail', is_follow_up: true }).in('id', ids);
+    toast(`Swept ${ids.length} contact${ids.length!==1?'s':''} → Follow-ups`);
+    await loadData();
+  } catch(e) { console.error(e); toast('Sweep failed'); }
+}
+
+// ─────────────────────────────────────────────
+// IMPORT
+// ─────────────────────────────────────────────
+function handleFile(e) { const f = e.target.files[0]; if (f) parseFile(f); }
+
+function parseFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rows.length < 2) { toast('File appears empty'); return; }
+      const columns = rows[0].map(String);
+      const guess = (...terms) => columns.find(c => terms.some(t => c.toLowerCase().includes(t))) || '— Skip —';
+      // Exact-match first, then fuzzy fallback
+      const exact = (target) => columns.find(c => c.toLowerCase() === target.toLowerCase());
+      S.importPreview = {
+        columns, count: rows.length - 1, rows, fileName: file.name,
+        g: {
+          name:  exact('BusinessName') || guess('business','company','name','dba','entity'),
+          phone: exact('PhoneNumber')  || guess('phone','tel','mobile','cell','number'),
+          date:  exact('IssueDate')    || guess('date','issue','license','lic','issued'),
+          city:  exact('City')         || guess('city','municipality','town','location','jurisdiction'),
+        },
+      };
+      render();
+    } catch(err) { console.error(err); toast('Could not read file'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function doImport() {
+  const p = S.importPreview; if (!p) return;
+  const nameCol  = document.getElementById('col-name')?.value;
+  const phoneCol = document.getElementById('col-phone')?.value;
+  const dateCol  = document.getElementById('col-date')?.value;
+  const cityCol  = document.getElementById('col-city')?.value;
+  if (!nameCol || nameCol === '— Skip —') { toast('Business Name column is required'); return; }
+  const nameIdx  = p.columns.indexOf(nameCol);
+  const phoneIdx = p.columns.indexOf(phoneCol);
+  const dateIdx  = p.columns.indexOf(dateCol);
+  const cityIdx  = p.columns.indexOf(cityCol);
+  try {
+    const { data: batch, error: be } = await db.from('batches').insert({
+      name: p.fileName || `Import ${new Date().toLocaleDateString()}`,
+      total_contacts: p.count,
+    }).select().single();
+    if (be) throw be;
+    const contacts = p.rows.slice(1)
+      .filter(r => r[nameIdx] !== '' && r[nameIdx] != null)
+      .map(r => {
+        let lic = null;
+        if (dateIdx >= 0 && r[dateIdx] !== '') {
+          const v = r[dateIdx];
+          if (typeof v === 'number') {
+            lic = new Date(Math.round((v - 25569) * 86400 * 1000)).toISOString().split('T')[0];
+          } else {
+            const parsed = new Date(v);
+            if (!isNaN(parsed)) lic = parsed.toISOString().split('T')[0];
+          }
+        }
+        return {
+          batch_id: batch.id,
+          business_name: String(r[nameIdx]).trim(),
+          phone_number: phoneIdx >= 0 && r[phoneIdx] ? String(r[phoneIdx]).trim() : null,
+          license_issue_date: lic,
+          city: cityIdx >= 0 && r[cityIdx] ? String(r[cityIdx]).trim() : null,
+          status: 'uncalled', attempts: 0,
+        };
+      });
+    for (let i = 0; i < contacts.length; i += 500) {
+      const { error } = await db.from('contacts').insert(contacts.slice(i, i + 500));
+      if (error) throw error;
+    }
+    S.importPreview = null;
+    toast(`✅ Imported ${contacts.length} contacts`);
+    await loadData(batch.id, p.fileName);
+    nav('list');
+  } catch(err) { console.error(err); toast('Import failed — check console'); }
+}
+
+async function deleteBatch(id, name, event) {
+  event.stopPropagation();
+  if (!confirm(`Delete "${name}" and all its contacts? This cannot be undone.`)) return;
+  try {
+    await db.from('batches').delete().eq('id', id);
+    toast(`Deleted "${name}"`);
+    if (S.activeBatchId === id) { S.activeBatchId = null; S.activeBatchName = ''; }
+    await loadData();
+  } catch(e) { console.error(e); toast('Delete failed'); }
+}
+
+async function switchBatch(id, name) {
+  S.activeBatchId = id; S.activeBatchName = name;
+  await loadData(id, name); nav('list');
+}
+
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+async function loadData(batchId, batchName) {
+  S.loading = true; render();
+  try {
+    const { data: batches } = await db.from('batches').select('*')
+      .order('uploaded_at', { ascending: false }).limit(20);
+    S.batches = batches || [];
+    if (!S.batches.length) { S.contacts = []; S.followups = []; S.contactsByBatch = []; S.loading = false; render(); return; }
+
+    // Track which batch was most recently imported for the header label
+    if (batchId) { S.activeBatchId = batchId; S.activeBatchName = batchName || ''; }
+    else if (!S.activeBatchId) { S.activeBatchId = S.batches[0]?.id; S.activeBatchName = S.batches[0]?.name || ''; }
+
+    // Load ALL active contacts across all batches, sorted by license date desc
+    const { data: contacts } = await db.from('contacts').select('*')
+      .eq('is_follow_up', false)
+      .order('license_issue_date', { ascending: false });
+
+    // Load ALL follow-ups across all batches
+    const { data: followups } = await db.from('contacts').select('*')
+      .eq('is_follow_up', true)
+      .order('license_issue_date', { ascending: false });
+
+    S.contacts  = contacts  || [];
+    S.followups = followups || [];
+
+    // Build grouped structure: batches in upload-date order, contacts within sorted by license date
+    const batchOrder = S.batches.map(b => b.id);
+    const grouped = {};
+    S.contacts.forEach(c => {
+      const key = c.batch_id || 'unknown';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+    // contacts already sorted by license_date desc from DB, so grouping preserves that order
+    S.contactsByBatch = batchOrder
+      .filter(bid => grouped[bid]?.length)
+      .map(bid => ({
+        batchId: bid,
+        batchName: S.batches.find(b => b.id === bid)?.name || 'Unknown',
+        contacts: grouped[bid],
+      }));
+
+  } catch(e) { console.error(e); toast('Error loading data'); }
+  S.loading = false; render();
+}
+
+// ─────────────────────────────────────────────
+// DRAG & DROP
+// ─────────────────────────────────────────────
+function attachDragDrop() {
+  const dz = document.getElementById('drop-zone'); if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('over');
+    const f = e.dataTransfer.files[0]; if (f) parseFile(f);
+  });
+}
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
