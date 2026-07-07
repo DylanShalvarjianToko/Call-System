@@ -1502,8 +1502,9 @@ async function doImport() {
       total_contacts: p.count,
     }).select().single();
     if (be) throw be;
-    const contacts = p.rows.slice(1)
-      .filter(r => r[nameIdx] !== '' && r[nameIdx] != null)
+    const MIN_DATE = new Date('2015-01-01');
+    const allRows = p.rows.slice(1).filter(r => r[nameIdx] !== '' && r[nameIdx] != null);
+    const contacts = allRows
       .map(r => {
         let lic = null;
         if (dateIdx >= 0 && r[dateIdx] !== '') {
@@ -1523,13 +1524,16 @@ async function doImport() {
           city: cityIdx >= 0 && r[cityIdx] ? String(r[cityIdx]).trim() : null,
           status: 'uncalled', attempts: 0,
         };
-      });
+      })
+      .filter(c => c.license_issue_date && new Date(c.license_issue_date) >= MIN_DATE);
+    const skipped = allRows.length - contacts.length;
     for (let i = 0; i < contacts.length; i += 500) {
       const { error } = await db.from('contacts').insert(contacts.slice(i, i + 500));
       if (error) throw error;
     }
     S.importPreview = null;
-    toast(`✅ Imported ${contacts.length} contacts`);
+    const skipNote = skipped > 0 ? ` (${skipped} skipped — pre-2015)` : '';
+    toast(`✅ Imported ${contacts.length} contacts${skipNote}`);
     await loadData(batch.id, p.fileName);
     nav('list');
   } catch(err) { console.error(err); toast('Import failed — check console'); }
