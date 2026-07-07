@@ -651,6 +651,7 @@ function statusBadge(status) {
     no_need:        ["Doesn't Need It",  'b-gray'],
     not_interested: ['Not Interested',   'b-gray'],
     in_progress:    ['Called',           'b-blue'],
+    sold:           ['🎉 Sold',          'b-green'],
   };
   const [label, cls] = map[status] || [];
   return label ? `<span class="badge ${cls}">${label}</span>` : '';
@@ -765,7 +766,7 @@ function renderList() {
     const warm       = group.contacts.filter(c => c.is_warm_lead && !['answered'].includes(c.status));
     const uncalled   = group.contacts.filter(c => !c.is_warm_lead && c.status === 'uncalled');
     const inProgress = group.contacts.filter(c => !c.is_warm_lead && c.status === 'in_progress');
-    const done       = group.contacts.filter(c => !['uncalled','in_progress'].includes(c.status) && !c.is_warm_lead);
+    const done       = group.contacts.filter(c => !['uncalled','in_progress','not_interested','no_need','sold'].includes(c.status) && !c.is_warm_lead);
 
     const remaining = uncalled.length + inProgress.length;
     const total     = group.contacts.length;
@@ -814,27 +815,38 @@ function renderFollowup() {
   const now = Date.now();
   const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
 
+  // Warm leads = answered + marked as warm (moved here from calls)
+  const warmLeads = S.followups.filter(c => c.is_warm_lead);
+  // Voicemail queue only (not warm leads)
+  const vmQueue = S.followups.filter(c => !c.is_warm_lead);
   // Backlog = not called in 3+ days (ready to re-call)
-  const backlog = S.followups.filter(c => {
+  const backlog = vmQueue.filter(c => {
     if (!c.last_called_at) return true;
     return (now - new Date(c.last_called_at).getTime()) >= threeDaysMs;
   });
   // Recent = called within last 3 days (too soon to call back)
-  const recent = S.followups.filter(c => {
+  const recent = vmQueue.filter(c => {
     if (!c.last_called_at) return false;
     return (now - new Date(c.last_called_at).getTime()) < threeDaysMs;
   });
 
   let html = '';
 
+  if (warmLeads.length > 0) {
+    html += `<div class="sec-hdr"><h2>⭐ Warm Leads</h2><span>${warmLeads.length}</span></div>`;
+    html += `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:0 2px">Interested — ready to close</div>`;
+    warmLeads.forEach(c => { html += contactCard(c, true); });
+  }
+
   if (backlog.length > 0) {
+    if (warmLeads.length > 0) html += `<div class="divider"></div>`;
     html += `<div class="sec-hdr"><h2>📞 Call Backlog</h2><span>${backlog.length} ready</span></div>`;
     html += `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:0 2px">Not called in 3+ days — good time to follow up</div>`;
     backlog.forEach(c => { html += contactCard(c, true); });
   }
 
   if (recent.length > 0) {
-    if (backlog.length > 0) html += `<div class="divider"></div>`;
+    if (warmLeads.length > 0 || backlog.length > 0) html += `<div class="divider"></div>`;
     html += `<div class="sec-hdr"><h2>⏳ Called Recently</h2><span>${recent.length}</span></div>`;
     html += `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:0 2px">Called within 3 days — give it time</div>`;
     recent.forEach(c => { html += contactCard(c, true); });
@@ -900,6 +912,7 @@ function renderDashboard() {
   const answered     = all.filter(c => c.status === 'answered').length;
   const answerRate   = totalCalled > 0 ? Math.round((answered / totalCalled) * 100) : 0;
   const warmLeads    = all.filter(c => c.is_warm_lead).length;
+  const soldCount    = all.filter(c => c.status === 'sold').length;
   const pipeline     = all.reduce((sum, c) => sum + (Number(c.quote_amount) || 0), 0);
   const pipelineFmt  = pipeline >= 1000
     ? '$' + (pipeline / 1000).toFixed(pipeline % 1000 === 0 ? 0 : 1) + 'k'
@@ -910,11 +923,13 @@ function renderDashboard() {
   let filtered = all.filter(c => {
     const matchSearch = !q || c.business_name.toLowerCase().includes(q) || (c.phone_number||'').includes(q) || (c.contact_name||'').toLowerCase().includes(q);
     const matchFilter =
-      S.dashFilter === 'all'       ? true :
-      S.dashFilter === 'answered'  ? c.status === 'answered' :
-      S.dashFilter === 'warm'      ? c.is_warm_lead :
-      S.dashFilter === 'voicemail' ? c.status === 'voicemail' :
-      S.dashFilter === 'no_answer' ? c.status === 'no_answer' : true;
+      S.dashFilter === 'all'            ? true :
+      S.dashFilter === 'answered'       ? c.status === 'answered' :
+      S.dashFilter === 'warm'           ? c.is_warm_lead :
+      S.dashFilter === 'voicemail'      ? c.status === 'voicemail' :
+      S.dashFilter === 'no_answer'      ? c.status === 'no_answer' :
+      S.dashFilter === 'sold'           ? c.status === 'sold' :
+      S.dashFilter === 'not_interested' ? c.status === 'not_interested' : true;
     return matchSearch && matchFilter;
   });
 
@@ -932,11 +947,12 @@ function renderDashboard() {
   });
 
   const chips = [
-    { key: 'all',       label: `All (${all.length})`,         cls: '' },
-    { key: 'answered',  label: `✅ Answered (${answered})`,    cls: '' },
-    { key: 'warm',      label: `⭐ Warm (${warmLeads})`,       cls: 'gold-chip' },
-    { key: 'voicemail', label: `📬 Voicemail`,                 cls: '' },
-    { key: 'no_answer', label: `❌ No Answer`,                 cls: '' },
+    { key: 'all',            label: `All (${all.length})`,             cls: '' },
+    { key: 'sold',           label: `🎉 Sold (${soldCount})`,          cls: 'gold-chip' },
+    { key: 'warm',           label: `⭐ Warm (${warmLeads})`,          cls: 'gold-chip' },
+    { key: 'answered',       label: `✅ Interested (${answered})`,     cls: '' },
+    { key: 'voicemail',      label: `📬 Voicemail`,                    cls: '' },
+    { key: 'not_interested', label: `🚫 Not Interested`,               cls: '' },
   ];
 
   let html = `
@@ -955,6 +971,11 @@ function renderDashboard() {
         <div class="stat-label">Warm Leads</div>
         <div class="stat-value gold">${warmLeads}</div>
         <div class="stat-sub">flagged contacts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sold</div>
+        <div class="stat-value green">${soldCount}</div>
+        <div class="stat-sub">closed deals</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Pipeline</div>
@@ -1127,6 +1148,7 @@ function renderCalling() {
 
         <button class="skip-btn" onclick="skipContact()">Skip without saving</button>
         <button class="reset-btn" onclick="resetContact()">↩ Reset to uncalled</button>
+        <button class="reset-btn" style="color:var(--gold);font-weight:700" onclick="markSold()">🎉 Mark as Sold</button>
         <button class="reset-btn" style="opacity:0.5" onclick="deleteContact()">🗑 Delete contact</button>
 
       </div>
@@ -1276,8 +1298,9 @@ async function doSave() {
   const contactName = document.getElementById('inp-name')?.value.trim()  || '';
   const quoteRaw    = document.getElementById('inp-quote')?.value.trim() || '';
   const quoteAmount = quoteRaw ? parseFloat(quoteRaw) : null;
-  // Only voicemail goes to follow-up; no_need/not_interested/answered = done, no callback
-  const goFollowup  = outcome === 'voicemail';
+  // voicemail → follow-up queue; answered → warm lead + follow-up; others = done
+  const goFollowup = outcome === 'voicemail' || outcome === 'answered';
+  const goWarm     = outcome === 'answered';
 
   // Build ordered list BEFORE updateLocal so current contact is still findable by index
   const orderedBefore = buildOrderedQueue();
@@ -1297,7 +1320,7 @@ async function doSave() {
       notes: notes || null,
       contact_name: contactName || null,
       quote_amount: quoteAmount,
-      is_warm_lead: c.is_warm_lead,
+      is_warm_lead: goWarm ? true : c.is_warm_lead,
       is_follow_up: goFollowup,
     };
     await db.from('contacts').update(updates).eq('id', c.id);
@@ -1389,6 +1412,23 @@ async function deleteContact() {
     S.currentContact = null;
     render();
   } catch(e) { console.error(e); toast('Delete failed'); }
+}
+
+async function markSold() {
+  const c = S.currentContact;
+  if (!c) return;
+  if (!confirm(`Mark "${c.business_name}" as sold? They'll move to History.`)) return;
+  try {
+    await db.from('contacts').update({ status: 'sold', is_follow_up: false, is_warm_lead: false }).eq('id', c.id);
+    S.contacts  = S.contacts.filter(x => x.id !== c.id);
+    S.followups = S.followups.filter(x => x.id !== c.id);
+    S.contactsByBatch.forEach(g => { g.contacts = g.contacts.filter(x => x.id !== c.id); });
+    S.contactsByBatch = S.contactsByBatch.filter(g => g.contacts.length > 0);
+    toast('🎉 Marked as sold!');
+    S.view = S.fromFollowup ? 'followup' : 'list';
+    S.currentContact = null;
+    render();
+  } catch(e) { console.error(e); toast('Error saving'); }
 }
 
 function updateLocal(updated) {
