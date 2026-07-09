@@ -603,8 +603,20 @@
 // ─────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────
-const SUPA_URL = 'https://lgfcdohfauytdshuzyae.supabase.co';
-const SUPA_KEY = 'sb_publishable_dH6y3RnBy-U6buzeEpWLPg_4P9aVSr-';
+const CONFIGS = {
+  dylan: {
+    url: 'https://lgfcdohfauytdshuzyae.supabase.co',
+    key: 'sb_publishable_dH6y3RnBy-U6buzeEpWLPg_4P9aVSr-',
+  },
+  kyle: {
+    url: 'https://wqlmnczxbjjbaiqpvntl.supabase.co',
+    key: 'sb_publishable__nghroVbBzcciA9C2Paw2g__ERoeqYO',
+  },
+};
+const instance = new URLSearchParams(location.search).get('instance') || 'dylan';
+const cfg = CONFIGS[instance] || CONFIGS.dylan;
+const SUPA_URL = cfg.url;
+const SUPA_KEY = cfg.key;
 const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ─────────────────────────────────────────────
