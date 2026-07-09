@@ -645,7 +645,7 @@ function fmtDate(d) {
 
 function statusBadge(status) {
   const map = {
-    answered:       ['Interested',       'b-green'],
+    answered:       ['Answered',         'b-green'],
     voicemail:      ['Voicemail',        'b-gold'],
     no_answer:      ['No Answer',        'b-red'],
     no_need:        ["Doesn't Need It",  'b-gray'],
@@ -950,7 +950,7 @@ function renderDashboard() {
     { key: 'all',            label: `All (${all.length})`,             cls: '' },
     { key: 'sold',           label: `🎉 Sold (${soldCount})`,          cls: 'gold-chip' },
     { key: 'warm',           label: `⭐ Warm (${warmLeads})`,          cls: 'gold-chip' },
-    { key: 'answered',       label: `✅ Interested (${answered})`,     cls: '' },
+    { key: 'answered',       label: `✅ Answered (${answered})`,       cls: '' },
     { key: 'voicemail',      label: `📬 Voicemail`,                    cls: '' },
     { key: 'not_interested', label: `🚫 Not Interested`,               cls: '' },
   ];
@@ -1078,7 +1078,7 @@ function renderCalling() {
   const warmOn  = c.is_warm_lead ? 'on' : 'off';
 
   const outcomes = [
-    { key:'answered',       emoji:'✅', label:'Interested',    selCls:'out-answered'  },
+    { key:'answered',       emoji:'✅', label:'Answered',      selCls:'out-answered'  },
     { key:'voicemail',      emoji:'📬', label:'Voicemail',     selCls:'out-voicemail' },
     { key:'not_interested', emoji:'🚫', label:'Not Interested', selCls:'out-no_answer' },
   ];
@@ -1298,9 +1298,9 @@ async function doSave() {
   const contactName = document.getElementById('inp-name')?.value.trim()  || '';
   const quoteRaw    = document.getElementById('inp-quote')?.value.trim() || '';
   const quoteAmount = quoteRaw ? parseFloat(quoteRaw) : null;
-  // voicemail → follow-up queue; answered → warm lead + follow-up; others = done
+  // voicemail + answered → follow-up queue; others = done
   const goFollowup = outcome === 'voicemail' || outcome === 'answered';
-  const goWarm     = outcome === 'answered';
+  const goWarm     = false;
 
   // Build ordered list BEFORE updateLocal so current contact is still findable by index
   const orderedBefore = buildOrderedQueue();
