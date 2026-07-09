@@ -1525,7 +1525,7 @@ async function doImport() {
           status: 'uncalled', attempts: 0,
         };
       })
-      .filter(c => c.license_issue_date && new Date(c.license_issue_date) >= MIN_DATE);
+      .filter(c => !c.license_issue_date || new Date(c.license_issue_date) >= MIN_DATE);
     const skipped = allRows.length - contacts.length;
     for (let i = 0; i < contacts.length; i += 500) {
       const { error } = await db.from('contacts').insert(contacts.slice(i, i + 500));
